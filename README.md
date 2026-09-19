@@ -106,6 +106,15 @@ Pi Voice reads the API key only from `OPENAI_API_KEY`; never add credentials to 
 - There is no acoustic echo cancellation. Use headphones to prevent feedback.
 - OpenAI bills Realtime audio and transcription usage. Pi coding turns use your selected Pi provider separately.
 
+## Architecture
+
+The architecture package explains the system at four levels:
+
+- [Domain language](./ai-artifacts/CONTEXT.md)
+- [System boundaries and runtime flows](./ai-artifacts/architecture.md)
+- [Execution and type flow](./ai-artifacts/type-breakdown.md)
+- [Architectural decisions](./ai-artifacts/docs/adr/INDEX.md)
+
 ## Development
 
 ```sh

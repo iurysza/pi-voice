@@ -108,12 +108,7 @@ Pi Voice reads the API key only from `OPENAI_API_KEY`; never add credentials to 
 
 ## Architecture
 
-The architecture package explains the system at four levels:
-
-- [Domain language](./ai-artifacts/CONTEXT.md)
-- [System boundaries and runtime flows](./ai-artifacts/architecture.md)
-- [Execution and type flow](./ai-artifacts/type-breakdown.md)
-- [Architectural decisions](./ai-artifacts/docs/adr/INDEX.md)
+Start with the [Pi Voice knowledge base](./ai-artifacts/_index.md). It routes readers from the shared domain language to runtime boundaries, concrete type flow, and the architectural decisions behind the two-model and terminal-audio design.
 
 ## Development
 

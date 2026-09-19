@@ -1,4 +1,10 @@
+---
+description: Records the decision to keep spoken conversation in OpenAI Realtime and coding work in the active Pi agent.
+---
+
 # ADR-0001: Separate conversation from coding work
+
+This decision gives the [delegation sequence](../../architecture.md#delegating-a-coding-request) its two-model shape. Use the [domain language](../../CONTEXT.md#language) to distinguish the live model from the Pi agent, then follow the [delegation type flow](../../type-breakdown.md#delegation) when changing the handoff contract.
 
 > **Quick Reference** | Status: Accepted | Date: 2026-09-19
 > **Decision**: Use a live model for spoken conversation and delegate tool-based work to the active Pi agent.
@@ -34,5 +40,4 @@ The live model calls `delegate_to_pi`. Pi Voice adds a visible delegation to the
 
 ## Related
 
-- [Architecture](../../architecture.md): Runtime boundaries and delegation sequence.
-- [ADR-0002](./ADR-0002-use-sox-for-terminal-audio.md): Native terminal audio boundary.
+The [runtime architecture](../../architecture.md) shows the resulting boundary between the Realtime conversation and Pi coding work. The [SoX decision](./ADR-0002-use-sox-for-terminal-audio.md) supplies the local audio boundary that feeds this conversation loop.

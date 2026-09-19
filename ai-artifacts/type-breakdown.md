@@ -1,6 +1,10 @@
+---
+description: Traces the concrete Pi Voice command, delegation, audio, settings, and error flows through their types and modules.
+---
+
 # Pi Voice type breakdown
 
-This reference maps the existing `/voice` path from the Pi command to audio playback. Every item marked `[existing]` is confirmed in the current source.
+This reference maps the existing `/voice` path from the Pi command to audio playback. Every item marked `[existing]` is confirmed in the current source. Read it after the [runtime architecture](./architecture.md) identifies the owning boundary, and use the [domain language](./CONTEXT.md) to distinguish the live model from the Pi agent. The [decision records](./docs/adr/INDEX.md) provide the rationale when a flow crosses the conversation, coding, or audio boundaries.
 
 ## Execution tree
 

@@ -1,6 +1,10 @@
+---
+description: Routes Pi Voice changes to the accepted decisions behind its model separation and terminal audio boundary.
+---
+
 # Architectural decision records
 
-Read this index first. Open an ADR when its decision or impact matches the work at hand.
+Read this index after the [knowledge-base overview](../../_index.md) identifies a decision-shaped question. The [runtime architecture](../../architecture.md) shows where these decisions take effect, and the [execution and type flow](../../type-breakdown.md) shows the concrete modules that enforce them. Open an ADR when its decision or impact matches the work at hand.
 
 ## Active decisions
 

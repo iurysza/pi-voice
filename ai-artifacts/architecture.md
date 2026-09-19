@@ -1,6 +1,10 @@
+---
+description: Maps Pi Voice's runtime boundaries, session lifecycle, trust model, and delegation flow.
+---
+
 # Pi Voice architecture
 
-Pi Voice separates low-latency conversation from coding work. The live model listens, speaks, and decides when a request needs tools. The Pi agent keeps project context, selects tools, and completes the work.
+Pi Voice separates low-latency conversation from coding work. The live model listens, speaks, and decides when a request needs tools. The Pi agent keeps project context, selects tools, and completes the work. The [domain language](./CONTEXT.md) defines the actors in this model, while the [execution and type flow](./type-breakdown.md) maps these boundaries to concrete modules and types. The [two-model decision](./docs/adr/ADR-0001-separate-conversation-from-coding.md) explains why this separation is deliberate.
 
 ## System context
 
@@ -93,19 +97,19 @@ sequenceDiagram
   actor User
   participant Media as SoX capture
   participant Model as Live model
-  participant Loop as VoiceLoop
+  participant Session as VoiceLoop
   participant Pi as Pi agent
   participant Speaker as SoX playback
 
   User->>Media: speaks
-  Media->>Loop: PCM frames
-  Loop->>Model: input_audio_buffer.append
-  Model-->>Loop: delegate_to_pi(input)
-  Loop->>Pi: visible realtime_delegation
-  Pi-->>Loop: user-facing result
-  Loop->>Model: BACKEND result + function output
-  Model-->>Loop: audio deltas
-  Loop->>Speaker: PCM bytes
+  Media->>Session: PCM frames
+  Session->>Model: input_audio_buffer.append
+  Model-->>Session: delegate_to_pi(input)
+  Session->>Pi: visible realtime_delegation
+  Pi-->>Session: user-facing result
+  Session->>Model: BACKEND result + function output
+  Model-->>Session: audio deltas
+  Session->>Speaker: PCM bytes
   Speaker-->>User: spoken result
 ```
 

@@ -1,6 +1,10 @@
+---
+description: Defines the domain language for Pi Voice's two-model conversation and coding architecture.
+---
+
 # Pi Voice context
 
-Pi Voice adds a spoken interface to Pi without replacing Pi as the coding agent. The live model manages the conversation; Pi retains project context, tools, and responsibility for completing coding work.
+Pi Voice adds a spoken interface to Pi without replacing Pi as the coding agent. The live model manages the conversation; Pi retains project context, tools, and responsibility for completing coding work. This language gives the [runtime architecture](./architecture.md) and [execution and type flow](./type-breakdown.md) a shared meaning, especially at the [visible delegation boundary](./architecture.md#delegating-a-coding-request).
 
 ## Model
 

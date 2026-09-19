@@ -1,4 +1,10 @@
+---
+description: Records the decision to use SoX subprocesses behind Pi Voice's portable Media interface.
+---
+
 # ADR-0002: Use SoX for terminal audio
+
+This decision defines the local audio side of the [media boundary](../../architecture.md#component-boundaries). Read the [microphone audio flow](../../type-breakdown.md#microphone-audio) before changing framing or playback behaviour, and use the [domain language](../../CONTEXT.md#language) to distinguish local capture and playback from the Realtime conversation.
 
 > **Quick Reference** | Status: Accepted | Date: 2026-09-19
 > **Decision**: Run SoX `rec` and `play` subprocesses behind the `Media` interface for microphone capture and playback.
@@ -35,5 +41,4 @@ Pi Voice reads signed mono 16-bit PCM from `rec` and writes the same 24 kHz form
 
 ## Related
 
-- [Architecture](../../architecture.md): Media boundary and session lifecycle.
-- [ADR-0001](./ADR-0001-separate-conversation-from-coding.md): Conversation and coding roles.
+The [runtime architecture](../../architecture.md) shows how the `Media` port fits into the session lifecycle. The [two-model decision](./ADR-0001-separate-conversation-from-coding.md) explains why this audio loop serves a live conversational model while Pi retains coding work.

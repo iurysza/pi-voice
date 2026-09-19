@@ -44,6 +44,11 @@ pi
 
 Then run `/voice` in Pi. Use `/voice start` and `/voice stop` for direct control.
 
+## Use headphones
+
+> [!WARNING]
+> **Use headphones with Pi Voice.** Pi Voice does not cancel acoustic echo, so your microphone can hear audio from your speakers. That can create feedback or make the voice model react to its own spoken reply. Headphones keep playback out of the microphone.
+
 ## Pi Voice is right for you if
 
 - [x] You want to talk through a coding task without giving up Pi's normal tool use.

@@ -34,7 +34,9 @@ export type CreateSocket = (url: string, options: { readonly headers: Readonly<R
 
 function sendHandoff(send: (message: unknown) => void, input: { readonly callId?: string; readonly output?: string }): void {
   if (input.output) send(createBackendItem(input.output));
+
   if (input.callId) send(createFunctionOutput({ callId: input.callId, output: HANDOFF_COMPLETE_ACK }));
+
   if (input.output) send(responseCreate());
 }
 
@@ -46,6 +48,7 @@ export function createFakeTransport(): FakeTransport {
   const events = new EventEmitter();
   const sent: unknown[] = [];
   let closed = false;
+
   const transport: FakeTransport = {
     kind: 'fake',
     sent,
@@ -60,10 +63,13 @@ export function createFakeTransport(): FakeTransport {
       transport.send(responseCreate());
     },
     completeHandoff(input) { sendHandoff(transport.send, input); },
-    onEvent(listener) { events.on('event', listener); return () => { events.off('event', listener); }; },
+    onEvent(listener) { events.on('event', listener);
+
+ return () => { events.off('event', listener); }; },
     emit(event) { if (!closed) events.emit('event', event); },
     async close() { closed = true; events.emit('event', { type: 'closed' } satisfies Inbound); events.removeAllListeners(); },
   };
+
   return transport;
 }
 
@@ -73,14 +79,17 @@ function encodeAudio(buffer: Uint8Array | string): string {
 
 const loadWebSocket = Effect.fn('loadWebSocket')(function*() {
   const specifier = 'ws';
+
   const loaded = yield* Effect.tryPromise({
     try: () => import(specifier) as Promise<unknown>,
     catch: error => new VoiceError({ code: 'transport-missing', message: error instanceof Error ? error.message : 'Voice realtime transport needs the `ws` package.' }),
   });
+
   return yield* atomic(() => {
     const record = Predicate.isObject(loaded) ? loaded as { default?: unknown; WebSocket?: unknown } : {};
     const ctor = record.default ?? record.WebSocket;
     requireValue(Predicate.isFunction(ctor), 'Voice realtime transport needs the `ws` package.', 'transport-missing');
+
     return (url: string, options: { readonly headers: Readonly<Record<string, string>> }) => new (ctor as new (url: string, options: { headers: Readonly<Record<string, string>> }) => HeaderSocket)(url, options);
   });
 });
@@ -92,24 +101,33 @@ function bind(socket: HeaderSocket, event: string, listener: (value: unknown) =>
 
 export function transportErrorMessage(value: unknown): string {
   if (value instanceof Error) return value.message;
+
   if (Predicate.isObject(value)) {
     const record = value as { error?: unknown; message?: unknown };
+
     if (record.error instanceof Error && record.error.message.trim()) return record.error.message;
+
     if (Predicate.isString(record.message) && record.message.trim()) return record.message;
   }
+
   return 'voice transport error';
 }
 
 function closeReason(value: unknown): string | undefined {
   if (Predicate.isNumber(value) && value !== 1000) return `Voice websocket closed (${value})`;
+
   if (Predicate.isObject(value)) {
     const record = value as { code?: unknown; reason?: unknown };
     const code = Predicate.isNumber(record.code) ? record.code : undefined;
     const reason = Predicate.isString(record.reason) && record.reason.trim() ? record.reason : undefined;
+
     if (reason) return reason;
+
     if (code && code !== 1000) return `Voice websocket closed (${code})`;
   }
+
   if (Predicate.isString(value) && value.trim()) return value;
+
   return undefined;
 }
 
@@ -123,39 +141,50 @@ export function createWebsocketTransport(options: {
   readonly createSocket: CreateSocket;
 }): Transport {
   const url = new URL(options.wsUrl);
+
   if (options.model && !url.searchParams.has('model')) url.searchParams.set('model', options.model);
+
   const socket = options.createSocket(url.toString(), {
     headers: {
       Authorization: `Bearer ${Redacted.value(options.apiKey)}`,
     },
   });
+
   const events = new EventEmitter();
   let opened = false;
   const pending: string[] = [];
 
   function send(message: unknown) {
     const payload = JSON.stringify(message);
+
     if (!opened) {
       if (isAudioAppend(payload)) {
         const audioCount = pending.filter(isAudioAppend).length;
+
         if (audioCount >= MAX_PENDING_FRAMES) {
           const index = pending.findIndex(isAudioAppend);
+
           if (index >= 0) pending.splice(index, 1);
         }
       }
+
       pending.push(payload);
+
       return;
     }
+
     socket.send(payload);
   }
 
   bind(socket, 'open', () => {
     opened = true;
+
     for (const payload of pending.splice(0)) socket.send(payload);
   });
   bind(socket, 'message', value => {
     const data = PredicateStringData(value);
     const parsed = parseInbound(data);
+
     if (Option.isSome(parsed)) events.emit('event', parsed.value);
   });
   bind(socket, 'close', value => {
@@ -168,7 +197,17 @@ export function createWebsocketTransport(options: {
 
   const transport: Transport = {
     kind: 'websocket',
-    async start() { send(sessionUpdate({ instructions: options.instructions, voice: options.voice, model: options.model, ...(options.turnDetection ? { turnDetection: options.turnDetection } : {}) })); },
+    async start() {
+      const input: { instructions: string; voice: string; model: string; turnDetection?: TurnDetectionSettings } = {
+        instructions: options.instructions,
+        voice: options.voice,
+        model: options.model,
+      };
+
+      if (options.turnDetection) input.turnDetection = options.turnDetection;
+
+      send(sessionUpdate(input));
+    },
     send,
     appendAudio(audio) { send(audioAppend(encodeAudio(audio))); },
     appendSpeech(text) {
@@ -176,24 +215,31 @@ export function createWebsocketTransport(options: {
       send(responseCreate());
     },
     completeHandoff(input) { sendHandoff(send, input); },
-    onEvent(listener) { events.on('event', listener); return () => { events.off('event', listener); }; },
+    onEvent(listener) { events.on('event', listener);
+
+ return () => { events.off('event', listener); }; },
     async close() {
       try { socket.close(); } catch { /* already closed */ }
+
       events.removeAllListeners();
     },
   };
+
   return transport;
 }
 
 function PredicateStringData(value: unknown): unknown {
   if (typeof value === 'string' || Buffer.isBuffer(value)) return value.toString();
+
   if (value && typeof value === 'object' && 'data' in value) return (value as { data: unknown }).data;
+
   return value;
 }
 
 export const acquireFakeTransport = Effect.fnUntraced(function*() {
   const transport = createFakeTransport();
   yield* Effect.acquireRelease(Effect.succeed(transport), resource => Effect.promise(() => resource.close()));
+
   return transport;
 });
 
@@ -210,5 +256,6 @@ export const acquireWebsocketTransport = Effect.fn('acquireWebsocketTransport')(
   const createSocket = options.createSocket ?? (yield* loadWebSocket());
   const transport = createWebsocketTransport({ ...options, createSocket });
   yield* Effect.acquireRelease(Effect.succeed(transport), resource => Effect.promise(() => resource.close()));
+
   return transport;
 });

@@ -47,7 +47,9 @@
     "@earendil-works/pi-coding-agent": "0.85.1",
     "@earendil-works/pi-tui": "0.85.1",
     "@effect/language-service": "0.87.2",
+    "@oxlint/plugins": "1.83.0",
     "@types/node": "22.19.19",
+    "oxlint": "1.83.0",
     "typebox": "1.3.7",
     "typescript": "5.9.3"
   },
@@ -56,8 +58,9 @@
     "build": "tsc",
     "prepare": "npm run build",
     "test": "node --test dist/test/*.test.js",
+    "lint": "oxlint",
     "test:all": "npm run typecheck && npm run build && npm test",
     "pack:check": "npm pack --dry-run",
-    "quality": "npm run test:all && npm run pack:check"
+    "quality": "npm run lint && npm run test:all && npm run pack:check"
   }
 }

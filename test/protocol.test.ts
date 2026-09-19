@@ -9,18 +9,21 @@ function event(value: unknown) {
 
 test('session tools stay registered when instructions omit delegate_to_pi', () => {
   const payload = sessionUpdate({ instructions: 'Always delegate file work. Never mention Pi.', voice: 'marin' });
+
   const session = Schema.decodeUnknownSync(Schema.Struct({
     session: Schema.Struct({
       instructions: Schema.String,
       tools: Schema.Array(Schema.Struct({ name: Schema.String })),
     }),
   }))(payload).session;
+
   assert.equal(session.tools[0]?.name, DELEGATE_TOOL_NAME);
   assert.equal(session.instructions.includes(DELEGATE_TOOL_NAME), false);
 });
 
 test('session update uses the GA Realtime schema', () => {
   const payload = sessionUpdate({ instructions: 'speak', voice: 'marin', model: 'gpt-realtime' });
+
   const session = Schema.decodeUnknownSync(Schema.Struct({
     session: Schema.Struct({
       type: Schema.Literal('realtime'),
@@ -40,6 +43,7 @@ test('session update uses the GA Realtime schema', () => {
       tools: Schema.Array(Schema.Struct({ name: Schema.String })),
     }),
   }))(payload).session;
+
   assert.equal(session.type, 'realtime');
   assert.deepEqual(session.output_modalities, ['audio']);
   assert.equal(session.audio.input.format.type, 'audio/pcm');

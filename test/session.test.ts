@@ -12,6 +12,7 @@ function host(): Host & { delegations: string[]; statuses: Array<string | undefi
   const delegations: string[] = [];
   const statuses: Array<string | undefined> = [];
   const notices: string[] = [];
+
   return {
     delegations,
     statuses,
@@ -35,6 +36,7 @@ async function activeLoop(input?: { readonly agentTurnRunning?: boolean; readonl
   loop.begin(input);
   loop.markBackend();
   await transport.start({ instructions: 'speak', voice: 'marin', model: 'gpt-realtime' });
+
   return { media, transport, ui, loop };
 }
 

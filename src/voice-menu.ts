@@ -20,6 +20,7 @@ export async function showVoiceMenu(ui: OverlayUi, state: VoiceMenuState): Promi
         { key: 's', label: 'Start', description: 'listen and speak', value: 'start' as const },
         { key: 't', label: 'Settings', description: 'voice, style, and audio', value: 'settings' as const },
       ];
+
   return presentOverlay(ui, (theme, done) => new ActionMenu('Voice', items, theme, done, {
     subtitle: state.status ?? 'Inactive',
     footer: OVERLAY_FOOTER,

@@ -30,6 +30,7 @@ class VoiceResources extends Context.Service<VoiceResources, { media: Media; tra
 
 function envKey(): Redacted.Redacted<string> | undefined {
   const value = process.env.OPENAI_API_KEY;
+
   return value && value.trim() ? Redacted.make(value) : undefined;
 }
 
@@ -51,10 +52,13 @@ function hostFor(ctx: ExtensionContext, pi: ExtensionAPI, showStatusLine: () => 
     sendDelegation(text) {
       try {
         const parsed = parseDelegation(text);
+
         if (Option.isNone(parsed)) {
           ctx.ui.notify('Voice handoff was not wrapped as a realtime delegation', 'warning');
+
           return;
         }
+
         const busy = ctx.hasPendingMessages() || !ctx.isIdle();
         const options = busy ? { triggerTurn: true as const, deliverAs: 'followUp' as const } : { triggerTurn: true as const };
         pi.sendMessage({
@@ -109,25 +113,33 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
         currentLoop?.detach();
         await currentLifetime?.close();
         currentLoop?.finishStop();
+
         if (currentCtx) publishStatus(currentCtx, undefined, showStatusLine);
       } finally {
         closing = undefined;
       }
     })();
+
     return closing;
   }
 
   async function startVoice(ctx: ExtensionContext, mode: 'toggle' | 'replace' = 'toggle') {
     const token = ++startToken;
+
     if (mode === 'toggle' && loop && (loop.state.phase === 'active' || loop.state.phase === 'starting')) {
       await closeVoice('stop');
+
       return;
     }
+
     await closeVoice('abandon');
+
     if (token !== startToken) return;
+
     const loaded = dependencies.settings
       ? { path: 'injected', loaded: true, settings: dependencies.settings, diagnostics: [] }
       : await Effect.runPromise(loadSettings(dependencies.settingsPath));
+
     for (const diagnostic of loaded.diagnostics) ctx.ui.notify(diagnostic, 'warning');
     const settings = loaded.settings;
     applyRuntimeSettings(settings);
@@ -136,6 +148,7 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
     const apiKey = dependencies.apiKey ?? envKey();
     const host = hostFor(ctx, pi, () => showStatusLine);
     host.endSession = () => { void closeVoice(); };
+
     host.retryOnce = () => {
       if (startupRetryUsed) return;
       startupRetryUsed = true;
@@ -143,7 +156,9 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
         if (currentCtx) return startVoice(currentCtx);
       });
     };
+
     const agentTurnRunning = !ctx.isIdle() || ctx.hasPendingMessages();
+
     const active = new NativeRuntime(Layer.effect(VoiceResources, Effect.gen(function* () {
       if (!fake) {
         yield* atomic(() => {
@@ -151,34 +166,62 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
           requireValue(version === PI_VERSION, `Pi Voice requires Pi ${PI_VERSION}; found ${version}`, 'pi-version');
         });
       }
+
       const media = dependencies.media ?? (fake ? yield* acquireFakeMedia() : yield* acquireSoxMedia({ captureCommand: settings.captureCommand, playbackCommand: settings.playbackCommand, playbackPaddingMs: settings.playbackPaddingMs }));
-      const transport = dependencies.transport ?? (fake ? yield* acquireFakeTransport() : yield* acquireWebsocketTransport({
-        apiKey: apiKey ?? Redacted.make(''),
-        model: settings.model,
-        voice: settings.voice,
-        instructions,
-        wsUrl: settings.wsUrl,
-        turnDetection: settings,
-        ...(dependencies.createSocket ? { createSocket: dependencies.createSocket } : {}),
-      }));
+
+      let transport: Transport;
+
+      if (dependencies.transport) {
+        transport = dependencies.transport;
+      } else if (fake) {
+        transport = yield* acquireFakeTransport();
+      } else if (dependencies.createSocket) {
+        transport = yield* acquireWebsocketTransport({
+          apiKey: apiKey ?? Redacted.make(''),
+          model: settings.model,
+          voice: settings.voice,
+          instructions,
+          wsUrl: settings.wsUrl,
+          turnDetection: settings,
+          createSocket: dependencies.createSocket,
+        });
+      } else {
+        transport = yield* acquireWebsocketTransport({
+          apiKey: apiKey ?? Redacted.make(''),
+          model: settings.model,
+          voice: settings.voice,
+          instructions,
+          wsUrl: settings.wsUrl,
+          turnDetection: settings,
+        });
+      }
+
       const next = new VoiceLoop(media, transport, host, initialState(), settings.interruptResponse);
       yield* Effect.acquireRelease(Effect.sync(() => {
         next.attach();
         next.begin({ agentTurnRunning, startupRetry: startupRetryUsed ? 'used' : 'available' });
         next.markBackend();
+
         return next;
       }), resource => Effect.sync(() => resource.detach()));
       yield* Effect.promise(() => transport.start({ instructions, voice: settings.voice, model: settings.model }));
+
       return VoiceResources.of({ media, transport, loop: next });
     })));
+
     lifetime = active;
+
     try {
       const resources = await active.run(VoiceResources.use(Effect.succeed));
+
       if (token !== startToken || active.closed) {
         await active.close();
+
         if (lifetime === active) lifetime = undefined;
+
         return;
       }
+
       loop = resources.loop;
       loop.armStartup();
       publishStatus(ctx, loop.state, showStatusLine);
@@ -190,6 +233,7 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
       });
     } catch (error) {
       await active.close();
+
       if (lifetime === active) lifetime = undefined;
       ctx.ui.notify(errorMessage(isError(error) ? error : new Error('Voice failed to start')), 'error');
     }
@@ -198,49 +242,68 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
   pi.registerCommand('voice', {
     description: 'Live voice: start, stop, mute, or settings for voice and speaking style',
     getArgumentCompletions: prefix => {
-      const items = ['start', 'stop', 'mute', 'settings'].filter(value => value.startsWith(prefix)).map(value => ({ value, label: value }));
+      const items = ['start', 'stop', 'mute', 'settings'].flatMap(value => value.startsWith(prefix) ? [{ value, label: value }] : []);
+
       return items.length > 0 ? items : null;
     },
     handler: async (args, ctx) => {
       currentCtx = ctx;
       let sub = args.trim();
+
       if (ctx.mode !== 'tui') return ctx.ui.notify('Voice requires the native Pi TUI', 'warning');
+
       if (!sub) {
         const active = Boolean(loop && (loop.state.phase === 'active' || loop.state.phase === 'starting'));
         const status = loop ? statusLine(loop.state) : undefined;
-        const action = await showVoiceMenu(ctx.ui, {
+
+        const menuOptions: { active: boolean; muted: boolean; status?: string } = {
           active,
           muted: loop?.state.microphoneMuted === true,
-          ...(status ? { status } : {}),
-        });
+        };
+
+        if (status) menuOptions.status = status;
+
+        const action = await showVoiceMenu(ctx.ui, menuOptions);
+
         if (!action) return;
         sub = action;
       }
+
       if (sub === 'settings') {
         const sessionLive = Boolean(loop && (loop.state.phase === 'active' || loop.state.phase === 'starting'));
         const result = await showVoiceSettings(ctx.ui, dependencies.settingsPath, { sessionLive });
+
         if (!result.saved) return;
+
         if (!dependencies.settings) {
           const loaded = await Effect.runPromise(loadSettings(dependencies.settingsPath));
           applyRuntimeSettings(loaded.settings);
         }
+
         if (currentCtx && loop) publishStatus(currentCtx, loop.state, showStatusLine);
+
         if (result.restart) {
           startupRetryUsed = false;
           await startVoice(ctx, 'replace');
         }
+
         return;
       }
+
       if (sub === 'mute') {
         if (!loop || (loop.state.phase !== 'active' && loop.state.phase !== 'starting')) return ctx.ui.notify('Voice is not active', 'warning');
         loop.mute();
+
         return;
       }
+
       if (sub === 'stop') {
         startupRetryUsed = false;
         await closeVoice('stop');
+
         return;
       }
+
       startupRetryUsed = false;
       await startVoice(ctx);
     },
@@ -254,8 +317,10 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
   });
   pi.on('input', (event, ctx) => {
     currentCtx = ctx;
+
     if (event.source !== 'interactive' || !loop || loop.state.phase !== 'active') return;
     loop.typed(event.text);
+
     return undefined;
   });
   pi.on('message_start', event => {
@@ -265,21 +330,28 @@ export default function voiceExtension(pi: ExtensionAPI, dependencies: VoiceDepe
     const marked = turnIsVoice || isVoiceDelegationTurn(event);
     turnIsVoice = false;
     const speakable = extractSpeakableAssistant(event);
+
     if (marked) {
       pendingSettlements.push(speakable ?? '');
+
       return;
     }
+
     if (pendingSettlements.length === 0 || speakable === undefined) return;
     pendingSettlements[pendingSettlements.length - 1] = speakable;
   });
   pi.on('agent_settled', (_event, ctx) => {
     currentCtx = ctx;
+
     if (!loop) {
       pendingSettlements.length = 0;
+
       return;
     }
+
     while (pendingSettlements.length > 0) {
       const speakable = pendingSettlements.shift() ?? '';
+
       if (showBackendMessages && speakable) pi.appendEntry(BACKEND_ENTRY_TYPE, { text: speakable });
       loop.settled(speakable);
     }

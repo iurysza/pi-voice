@@ -1,8 +1,11 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
 const PROTOCOL_VERSION = 1 as const;
+
 const HOST_READY = '@iurysza/pi-ext/footer-slot/ready/v1';
+
 const REGISTER = '@iurysza/pi-ext/footer-slot/register/v1';
+
 const UNREGISTER = '@iurysza/pi-ext/footer-slot/unregister/v1';
 
 export function createFooterSlotRegistration(
@@ -13,9 +16,11 @@ export function createFooterSlotRegistration(
 ) {
   const payload = { protocolVersion: PROTOCOL_VERSION, id, priority, placement };
   const register = () => events.emit(REGISTER, payload);
+
   const disposeReady = events.on(HOST_READY, data => {
     if ((data as { protocolVersion?: unknown } | undefined)?.protocolVersion === PROTOCOL_VERSION) register();
   });
+
   register();
 
   return {

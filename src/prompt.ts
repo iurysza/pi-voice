@@ -13,11 +13,13 @@ export function effectiveLiveInstructions(base: string): string {
 
 export function storedLiveInstructions(base: string): string {
   const trimmed = base.trim();
+
   return !trimmed || trimmed === LIVE_INSTRUCTIONS ? '' : trimmed;
 }
 
 export function voiceInstructions(style: string, base = ''): string {
   const prompt = effectiveLiveInstructions(base);
+
   return style.trim()
     ? `${prompt}\nSpeaking style, without changing the task or tool rules above:\n${style.trim()}`
     : prompt;

@@ -14,12 +14,14 @@ export class NativeRuntime<R> {
     const task = this.runtime.runPromise(effect, { signal: combined });
     this.running.add(task);
     void task.then(() => this.running.delete(task), () => this.running.delete(task));
+
     return task;
   }
   close(): Promise<void> {
     if (this.disposal) return this.disposal;
     this.cancellation.abort();
     this.disposal = Promise.allSettled(this.running).then(() => this.runtime.dispose());
+
     return this.disposal;
   }
 }

@@ -33,21 +33,25 @@ class FakeUi {
 function renderedWidget(ui: FakeUi): string | undefined {
   if (typeof ui.widget !== 'function') return undefined;
   const factory = ui.widget as (tui: { requestRender(): void }, theme: FakeUi['theme']) => { render: (width: number) => string[] };
+
   return factory({ requestRender() {} }, ui.theme).render(80)[0];
 }
 
 function fakeBus() {
   const handlers = new Map<string, Set<(data: unknown) => void>>();
+
   return {
     records: [] as Array<{ channel: string; data: unknown }>,
     emit(channel: string, data: unknown) {
       this.records.push({ channel, data });
+
       for (const handler of handlers.get(channel) ?? []) handler(data);
     },
     on(channel: string, handler: (data: unknown) => void) {
       const channelHandlers = handlers.get(channel) ?? new Set();
       channelHandlers.add(handler);
       handlers.set(channel, channelHandlers);
+
       return () => channelHandlers.delete(handler);
     },
   };
@@ -61,6 +65,7 @@ function fakePi() {
   const messages: Array<{ content: string; display: boolean; customType: string }> = [];
   const ui = new FakeUi();
   let idle = true;
+
   const api = {
     events: bus,
     registerMessageRenderer(name: string, renderer: MessageRenderer) { renderers.set(name, renderer); },
@@ -76,6 +81,7 @@ function fakePi() {
     getAllTools() { return []; },
     getCommands() { return [...commands.keys()].map(name => ({ name })); },
   };
+
   const ctx = {
     mode: 'tui',
     ui,
@@ -83,6 +89,7 @@ function fakePi() {
     hasPendingMessages: () => !idle,
     sessionManager: { getSessionId: () => 's', getSessionFile: () => '/tmp/session.jsonl' },
   };
+
   return { api: api as unknown as ExtensionAPI, commands, events, bus, messages, ctx, ui, renderers };
 }
 

@@ -35,10 +35,14 @@ class TestProcess implements SoxProcess {
   private readonly exits = new EventEmitter();
   readonly stdin = {
     writable: true,
-    write: (buffer: Uint8Array) => { this.writes.push(Buffer.from(buffer)); return true; },
+    write: (buffer: Uint8Array) => { this.writes.push(Buffer.from(buffer));
+
+ return true; },
     end: () => { this.stdin.writable = false; },
   };
-  kill(_signal: NodeJS.Signals) { this.kills += 1; this.exits.emit('exit'); return true; }
+  kill(_signal: NodeJS.Signals) { this.kills += 1; this.exits.emit('exit');
+
+ return true; }
   onExit(listener: () => void) { this.exits.once('exit', listener); }
 }
 
@@ -59,8 +63,11 @@ test('SoX retains every chunk during a delayed player restart and pads only repl
   let calls = 0;
   await withMedia(async () => {
     calls += 1;
+
     if (calls === 1) return capture;
+
     if (calls === 2) return first;
+
     return new Promise(resolve => { release = resolve; });
   }, 150, async media => {
     media.clearPlayback();
@@ -87,8 +94,11 @@ test('repeated interruption discards old queued speech and obsolete players only
   let calls = 0;
   await withMedia(async () => {
     calls += 1;
+
     if (calls === 1) return capture;
+
     if (calls === 2) return initial;
+
     return new Promise(resolve => { releases.push(resolve); });
   }, 0, async media => {
     media.clearPlayback();
@@ -129,6 +139,7 @@ test('a player that finishes spawning after close is stopped without playback', 
   const late = new TestProcess();
   await withMedia(async () => {
     if (++calls <= 2) return new TestProcess();
+
     return new Promise(resolve => { release = resolve; });
   }, 0, async media => {
     media.clearPlayback();

@@ -122,7 +122,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run quality
 ```
 
-The quality check type-checks, builds, runs deterministic tests, and checks the package contents with `npm pack --dry-run`.
+The quality check runs the vendored Oxlint anti-slop rules, type-checks, builds, runs deterministic tests, and checks the package contents with `npm pack --dry-run`.
 
 Live microphone and Realtime checks are manual. They require SoX and an OpenAI API key; the automated suite uses fake media and transport implementations.
 

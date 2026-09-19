@@ -62,13 +62,16 @@ export function isEnterKey(data: string): boolean {
 
 export function letterKey(data: string): string | undefined {
   if (data.length === 1 && data >= 'A' && data <= 'Z') return data.toLowerCase();
+
   if (data.length === 1 && data >= 'a' && data <= 'z') return data;
+
   return undefined;
 }
 
 export function presentOverlay<A>(ui: OverlayUi, create: (theme: OverlayTheme, done: (value: A | undefined) => void) => OverlayComponent): Promise<A | undefined> {
   return withHerdrNavigationPassthrough(() => ui.custom<A | undefined>((tui, theme, _keys, done) => {
     const overlay = create(theme, done);
+
     return {
       get focused() { return overlay.focused ?? false; },
       set focused(value: boolean) { overlay.focused = value; },
@@ -107,11 +110,13 @@ export class PromptOverlay implements OverlayComponent {
     const th = this.theme;
     const frame = new OverlayFrame(width, th);
     const lines = [frame.top(), frame.row(th.fg('accent', th.bold(this.title)))];
+
     if (this.subtitle) lines.push(frame.rowTruncated(th.fg('dim', this.subtitle)));
     lines.push(frame.separator());
     const typed = this.input.render(frame.innerWidth)[0] ?? '';
     lines.push(frame.row(typed));
     lines.push(frame.separator(), frame.row(th.fg('dim', 'Enter confirm · Esc back')), frame.bottom());
+
     return lines;
   }
   invalidate(): void { this.input.invalidate(); }

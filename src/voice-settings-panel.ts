@@ -98,15 +98,21 @@ async function pickNumber(
     })),
     { key: 'c', label: 'Custom', description: format(current), value: 'custom' },
   ], { subtitle });
+
   if (selected === undefined) return undefined;
+
   if (selected !== 'custom') return Number(selected);
   const edited = await prompt(ui, title, String(current), subtitle);
+
   if (edited === undefined) return undefined;
   const parsed = parseBoundedNumber(edited, schema);
+
   if (Option.isNone(parsed)) {
     ui.notify(`Enter a value in range. Keeping ${format(current)}.`, 'warning');
+
     return undefined;
   }
+
   return parsed.value;
 }
 
@@ -124,6 +130,7 @@ type Draft = {
 
 function draftFrom(settings: VoiceSettings): Draft {
   const voice = REALTIME_VOICES.find(value => value === settings.voice) ?? DEFAULT_REALTIME_VOICE;
+
   return {
     voice,
     liveInstructions: storedLiveInstructions(settings.liveInstructions),
@@ -149,7 +156,9 @@ function sessionFieldsChanged(draft: Draft, original: Draft): boolean {
 
 function savedNotice(sessionLive: boolean, restart: boolean): string {
   if (restart) return 'Voice preferences saved. Restarting.';
+
   if (sessionLive) return 'Voice preferences saved.';
+
   return 'Voice preferences saved. Start /voice to hear the changes.';
 }
 
@@ -158,6 +167,7 @@ async function confirmRestart(ui: SettingsUi): Promise<boolean> {
     { key: 'r', label: 'Restart now', description: 'end this session and apply the new settings', value: 'restart' },
     { key: 'k', label: 'Keep editing', description: 'leave the session running', value: 'keep' },
   ], { subtitle: 'These settings take effect only after Voice restarts' });
+
   return choice === 'restart';
 }
 
@@ -168,9 +178,11 @@ export async function showVoiceSettings(
 ): Promise<VoiceSettingsResult> {
   const sessionLive = options.sessionLive === true;
   const loaded = await Effect.runPromise(loadSettings(path));
+
   for (const diagnostic of loaded.diagnostics) ui.notify(diagnostic, 'warning');
   const draft = draftFrom(loaded.settings);
   const original = { ...draft };
+
   for (;;) {
     const action = await menu<PanelAction>(ui, 'Voice settings', [
       { key: 'v', label: 'Voice', description: titleCase(draft.voice), value: 'voice' },
@@ -185,19 +197,24 @@ export async function showVoiceSettings(
       { key: 'l', label: 'Show status line', description: onOff(draft.showStatusLine), value: 'statusLine' },
       { key: 'a', label: 'Save changes', value: 'save' },
     ], { subtitle: sessionLive ? 'Session changes restart a live session' : 'Changes apply to your next voice session' });
+
     if (action === undefined) return { saved: false, restart: false };
+
     if (action === 'interrupt') {
       draft.interruptResponse = !draft.interruptResponse;
       continue;
     }
+
     if (action === 'backend') {
       draft.showBackendMessages = !draft.showBackendMessages;
       continue;
     }
+
     if (action === 'statusLine') {
       draft.showStatusLine = !draft.showStatusLine;
       continue;
     }
+
     if (action === 'voice') {
       const picked = await menu(ui, 'Voice › Base voice', REALTIME_VOICES.map((voice, index) => ({
         key: String.fromCharCode(97 + index),
@@ -205,9 +222,11 @@ export async function showVoiceSettings(
         description: voice === draft.voice ? 'current' : '',
         value: voice,
       })), { subtitle: 'Accent and age are guidance, not guarantees' });
+
       if (picked) draft.voice = picked;
       continue;
     }
+
     if (action === 'style') {
       const picked = await menu(ui, 'Voice › Speaking style', [
         ...VOICE_STYLES.map((preset, index) => ({
@@ -218,49 +237,69 @@ export async function showVoiceSettings(
         })),
         { key: 'u', label: 'Custom', description: styleLabel(draft.voiceInstructions) === 'Custom' ? 'current' : '', value: 'Custom' },
       ], { subtitle: 'Accent and age are guidance, not guarantees' });
+
       if (picked === undefined) continue;
+
       if (picked === 'Custom') {
         const edited = await ui.editor('Speaking style instructions', draft.voiceInstructions);
+
         if (edited !== undefined) draft.voiceInstructions = edited.trim();
       } else {
         const preset = VOICE_STYLES.find(value => value.label === picked);
+
         if (preset) draft.voiceInstructions = preset.instructions;
       }
+
       continue;
     }
+
     if (action === 'instructions') {
       const edited = await ui.editor('Speaking style instructions', draft.voiceInstructions);
+
       if (edited !== undefined) draft.voiceInstructions = edited.trim();
       continue;
     }
+
     if (action === 'prompt') {
       const edited = await ui.editor('Live-model prompt', effectiveLiveInstructions(draft.liveInstructions));
+
       if (edited !== undefined) draft.liveInstructions = storedLiveInstructions(edited);
       continue;
     }
+
     if (action === 'threshold') {
       const next = await pickNumber(ui, 'Voice › Speech threshold', '0 to 1. Higher values require louder speech.', draft.vadThreshold, THRESHOLDS, VadThreshold, value => value.toFixed(2));
+
       if (next !== undefined) draft.vadThreshold = next;
       continue;
     }
+
     if (action === 'silence') {
       const next = await pickNumber(ui, 'Voice › Pause before replying', '1 to 2000 ms of silence before the turn ends.', draft.vadSilenceDurationMs, PAUSES, VadSilence, value => `${value} ms`);
+
       if (next !== undefined) draft.vadSilenceDurationMs = next;
       continue;
     }
+
     if (action === 'padding') {
       const next = await pickNumber(ui, 'Voice › Playback padding', '0 to 2000 ms of silence around replies.', draft.playbackPaddingMs, PADDINGS, PlaybackPadding, value => `${value} ms`);
+
       if (next !== undefined) draft.playbackPaddingMs = next;
       continue;
     }
+
     const restart = sessionLive && sessionFieldsChanged(draft, original);
+
     if (restart && !await confirmRestart(ui)) continue;
+
     try {
       await Effect.runPromise(saveVoicePreferences(draft, path));
       ui.notify(savedNotice(sessionLive, restart), 'info');
+
       return { saved: true, restart };
     } catch {
       ui.notify('Voice preferences were not saved. Check the settings file for invalid JSON, credentials, or permission problems.', 'error');
+
       return { saved: false, restart: false };
     }
   }

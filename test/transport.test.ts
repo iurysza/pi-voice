@@ -14,11 +14,13 @@ test('websocket ErrorEvent-shaped payloads keep the underlying cause', () => {
 
 test('GA websocket handshake omits the retired beta header', async () => {
   let headers: Readonly<Record<string, string>> | undefined;
+
   const socket: HeaderSocket = {
     send() { /* unused */ },
     close() { /* unused */ },
     on() { /* unused */ },
   };
+
   const transport = createWebsocketTransport({
     apiKey: Redacted.make('sk-test'),
     model: 'gpt-realtime',
@@ -27,9 +29,11 @@ test('GA websocket handshake omits the retired beta header', async () => {
     wsUrl: 'wss://api.openai.com/v1/realtime',
     createSocket: (_url, options) => {
       headers = options.headers;
+
       return socket;
     },
   });
+
   assert.equal(headers?.Authorization?.startsWith('Bearer '), true);
   assert.equal(headers && Object.hasOwn(headers, 'OpenAI-Beta'), false);
   await transport.close();
@@ -38,11 +42,13 @@ test('GA websocket handshake omits the retired beta header', async () => {
 test('pre-open audio frames preserve session.update and configured interruption settings', async () => {
   const sent: string[] = [];
   const listeners = new Map<string, (value?: unknown) => void>();
+
   const socket: HeaderSocket = {
     send(data) { sent.push(data); },
     close() { /* unused */ },
     on(event, listener) { listeners.set(event, listener); },
   };
+
   const transport = createWebsocketTransport({
     apiKey: Redacted.make('sk-test'),
     model: 'gpt-realtime',
@@ -52,10 +58,13 @@ test('pre-open audio frames preserve session.update and configured interruption 
     turnDetection: { vadThreshold: 0.9, vadSilenceDurationMs: 1200, interruptResponse: false },
     createSocket: () => socket,
   });
+
   await transport.start({ instructions: LIVE_INSTRUCTIONS, voice: 'marin', model: 'gpt-realtime' });
+
   for (let index = 0; index < MAX_PENDING_FRAMES + 5; index += 1) {
     transport.send(audioAppend('qq=='));
   }
+
   listeners.get('open')?.();
   const first = JSON.parse(sent[0] ?? '{}') as { type?: string; session?: { type?: string; output_modalities?: string[]; audio?: { input?: { turn_detection?: unknown }; output?: unknown } } };
   assert.equal(first.type, 'session.update');

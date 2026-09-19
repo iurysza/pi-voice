@@ -103,22 +103,27 @@ export function initialState(): VoiceState {
 export function boundText(text: string, limit = MAX_TRANSCRIPT_BYTES): string {
   if (Buffer.byteLength(text, 'utf8') <= limit) return text;
   let end = text.length;
+
   while (end > 0 && Buffer.byteLength(text.slice(0, end), 'utf8') > limit) end -= 1;
+
   return text.slice(0, end);
 }
 
 export function fingerprint(text: string): string {
   const input = text.trim();
   let hash = 0xcbf29ce484222325n;
+
   for (const byte of Buffer.from(input, 'utf8')) {
     hash ^= BigInt(byte);
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
+
   return `${input.length}:${hash.toString(16)}`;
 }
 
 function maybeActivate(state: VoiceState): VoiceState {
   if (state.phase !== 'starting' || !state.backendStarted || !state.transportReady) return state;
+
   return {
     ...state,
     phase: 'active',
@@ -129,7 +134,9 @@ function maybeActivate(state: VoiceState): VoiceState {
 
 export function beginStart(state: VoiceState, input?: { readonly agentTurnRunning?: boolean; readonly startupRetry?: StartupRetry }): VoiceState {
   if (state.phase === 'stopping') return { ...state, startupRetry: 'used', failure: 'Voice conversation is still stopping.' };
+
   if (state.phase !== 'inactive') return beginStop(state);
+
   return {
     ...initialState(),
     microphoneMuted: state.microphoneMuted,
@@ -142,16 +149,19 @@ export function beginStart(state: VoiceState, input?: { readonly agentTurnRunnin
 
 export function markBackendStarted(state: VoiceState): VoiceState {
   if (state.phase !== 'starting') return state;
+
   return maybeActivate({ ...state, backendStarted: true });
 }
 
 export function markTransportReady(state: VoiceState): VoiceState {
   if (state.phase !== 'starting') return state;
+
   return maybeActivate({ ...state, transportReady: true });
 }
 
 export function beginStop(state: VoiceState): VoiceState {
   if (state.phase === 'inactive' || state.phase === 'stopping') return state;
+
   return { ...state, phase: 'stopping', startupRetry: 'used', speakerSuppressed: true };
 }
 
@@ -170,21 +180,25 @@ export function fail(state: VoiceState, message: string): VoiceState {
 
 export function requestRetry(state: VoiceState): VoiceState | undefined {
   if (state.phase !== 'starting' || state.startupRetry !== 'available') return undefined;
+
   return { ...state, phase: 'stopping', startupRetry: 'waitingForStop', failure: 'Voice connection timed out. Retrying once after cleanup.' };
 }
 
 export function toggleMute(state: VoiceState): VoiceState {
   if (state.phase !== 'active' && state.phase !== 'starting') return state;
+
   return { ...state, microphoneMuted: !state.microphoneMuted };
 }
 
 export function setSpeakerSuppressed(state: VoiceState, suppressed: boolean): VoiceState {
   if (state.phase !== 'active' && state.phase !== 'starting') return state;
+
   return { ...state, speakerSuppressed: suppressed };
 }
 
 export function noteTypedInput(state: VoiceState, text: string): VoiceState {
   if (state.phase !== 'active') return state;
+
   return {
     ...state,
     latestInputWasVoice: false,
@@ -201,7 +215,9 @@ export function noteVoiceInput(state: VoiceState, input: string, source?: string
   const voiceFingerprint = fingerprint(input);
   const stale = !state.latestInputWasVoice && state.latestVoiceFingerprint === voiceFingerprint;
   const maySpeak = !tailFlush && !stale;
+
   if (!maySpeak) return { state, maySpeak };
+
   return {
     state: {
       ...state,
@@ -218,20 +234,25 @@ export function noteVoiceInput(state: VoiceState, input: string, source?: string
 
 export function applyTranscriptDelta(state: VoiceState, role: string, delta: string): VoiceState {
   if (state.phase === 'inactive') return state;
+
   const interleaved = state.transcriptRole && state.transcriptRole !== role && state.transcript
     ? { role: state.transcriptRole, text: state.transcript }
     : state.interleaved;
+
   const transcript = state.transcriptRole === role ? state.transcript : '';
+
   return { ...state, interleaved, transcriptRole: role, transcript: boundText(`${transcript}${delta}`) };
 }
 
 export function completeTranscript(state: VoiceState, role: string, text: string): VoiceState {
   const next = applyTranscriptDelta(state, role, '');
+
   return { ...next, transcript: boundText(text || next.transcript), transcriptRole: role };
 }
 
 export function queueSpeech(state: VoiceState, text: string): VoiceState {
   if (state.phase !== 'active' || !state.latestInputWasVoice || !state.awaitingDelegation) return state;
+
   return {
     ...state,
     nextSpeechId: state.nextSpeechId + 1,
@@ -247,7 +268,9 @@ export function takeQueuedSpeech(state: VoiceState): { state: VoiceState; speech
   if (state.pendingSpeech.length === 0) return { state, speech: undefined };
   const speech = state.pendingSpeech[0];
   const next = { ...state, pendingSpeech: state.pendingSpeech.slice(1) };
+
   if (!speech || speech.generation !== next.inputGeneration || !next.latestInputWasVoice) return { state: next, speech: undefined };
+
   return { state: next, speech };
 }
 
@@ -269,19 +292,26 @@ export const STATUS_GLYPH = {
 
 export function statusPresentation(state: VoiceState): StatusPresentation | undefined {
   if (state.phase === 'inactive') return undefined;
+
   if (state.phase === 'starting') return { glyph: STATUS_GLYPH.connecting, label: 'connecting', role: 'dim' };
+
   if (state.phase === 'stopping') return { glyph: STATUS_GLYPH.connecting, label: 'stopping', role: 'dim' };
+
   if (state.microphoneMuted) return { glyph: STATUS_GLYPH.muted, label: 'muted', role: 'muted' };
+
   if (state.speakerSuppressed) return { glyph: STATUS_GLYPH.typing, label: 'typing', role: 'warning' };
+
   return { glyph: STATUS_GLYPH.listening, label: 'listening', role: 'accent' };
 }
 
 export function statusLine(state: VoiceState): string | undefined {
   const presentation = statusPresentation(state);
+
   return presentation ? `${presentation.glyph}  ${presentation.label}` : undefined;
 }
 
 export const FOOTER_ICON = STATUS_GLYPH.listening;
+
 export const FOOTER_STATUS_KEY = 'pi-voice';
 
 export function footerIconRole(state: VoiceState): FooterIconRole | undefined {

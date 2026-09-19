@@ -12,6 +12,7 @@ import { runScriptedCustom } from './overlay-driver.ts';
 function scratch(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'voice-panel-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
   return path.join(root, 'settings.json');
 }
 
@@ -35,6 +36,7 @@ function uiWithKeys(overlayKeys: string[], editorValue?: string) {
   const frames: string[][] = [];
   const keys = [...overlayKeys];
   const editorCalls: { title: string; prefill?: string }[] = [];
+
   return {
     notices,
     overlayKeys: keys,
@@ -45,6 +47,7 @@ function uiWithKeys(overlayKeys: string[], editorValue?: string) {
     },
     async editor(title: string, prefill?: string) {
       editorCalls.push(prefill === undefined ? { title } : { title, prefill });
+
       return editorValue;
     },
     notify(message: string) { notices.push(message); },
@@ -106,11 +109,13 @@ test('audio toggles and custom pause persist with other file keys', async t => {
 
 test('malformed, credential-bearing and linked settings remain untouched', async t => {
   const file = scratch(t);
+
   for (const original of ['{broken', '[]', 'null', '{"apiKey":"placeholder"}']) {
     fs.writeFileSync(file, original);
     await assert.rejects(Effect.runPromise(saveVoicePreferences(prefs(), file)));
     assert.equal(fs.readFileSync(file, 'utf8'), original);
   }
+
   const target = file + '.target';
   fs.renameSync(file, target);
   fs.symlinkSync(target, file);
@@ -122,6 +127,7 @@ test('malformed, credential-bearing and linked settings remain untouched', async
 test('style changes delivery without replacing tool and handoff instructions', () => {
   assert.equal(voiceInstructions(''), LIVE_INSTRUCTIONS);
   assert.equal(voiceInstructions('  '), LIVE_INSTRUCTIONS);
+
   for (const preset of VOICE_STYLES) {
     const prompt = voiceInstructions(preset.instructions);
     assert.ok(prompt.startsWith(LIVE_INSTRUCTIONS));

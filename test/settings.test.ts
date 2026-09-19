@@ -17,6 +17,7 @@ test('missing settings files use defaults and never invent API keys', async () =
 
 test('malformed and valid files stay key-free', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-voice-settings-'));
+
   try {
     const bad = path.join(root, 'bad.json');
     fs.writeFileSync(bad, '{');
@@ -38,6 +39,7 @@ test('malformed and valid files stay key-free', async () => {
 
 test('canonicalize reports why cove, sampleRate, and bad websocket URLs were ignored', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-voice-settings-'));
+
   try {
     const file = path.join(root, 'odd.json');
     fs.writeFileSync(file, JSON.stringify({ voice: 'cove', sampleRate: 16000, wsUrl: 'https://evil.example/v1' }));
@@ -74,6 +76,7 @@ test('audio controls retain valid values and reject invalid fields independently
   assert.equal(fallback.interruptResponse, true);
   assert.equal(fallback.playbackPaddingMs, DEFAULT_SETTINGS.playbackPaddingMs);
   assert.equal(settingsDiagnostics(bad).length, 4);
+
   for (const vadThreshold of [NaN, Infinity, -0.1, '0.7', null]) {
     assert.equal(normalizeSettings({ vadThreshold }).vadThreshold, DEFAULT_SETTINGS.vadThreshold);
   }

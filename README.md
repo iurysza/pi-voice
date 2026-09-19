@@ -13,7 +13,17 @@
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Linux-2563eb" alt="macOS and Linux">
 </p>
 
-Pi Voice is a [Pi](https://github.com/badlogic/pi-mono) extension for hands-free coding sessions. It uses OpenAI Realtime for speech, but hands actual work to the Pi agent you already use. Your delegated request stays visible as a `voice` entry and expands to show the exact message Pi received.
+Pi Voice is a [Pi](https://github.com/badlogic/pi-mono) extension for hands-free coding sessions. It uses OpenAI Realtime for conversation, but sends actual work to the Pi agent you already use. Each delegated request appears as a visible `voice` entry and expands to show the exact message Pi received.
+
+## Demo
+
+https://github.com/user-attachments/assets/733bb991-55f8-4768-9f03-16a6ea4be72d
+
+## Why this exists
+
+Voice should make a coding agent easier to use, not replace it with a second, isolated assistant. Pi Voice keeps the live model focused on listening, speaking, and deciding when work needs doing. Pi keeps its tools, project context, and normal model.
+
+The idea follows [this short post](https://x.com/IurySza/status/2101016432406577186) on combining a realtime conversational model with a capable coding agent.
 
 ## Install
 
@@ -28,7 +38,7 @@ pi install git:github.com/iurysza/pi-voice@v0.1.0
 Set the key only in the shell that starts Pi:
 
 ```sh
-export OPENAI_API_KEY='...'
+export OPENAI_API_KEY=[REDACTED]
 pi
 ```
 
@@ -64,9 +74,30 @@ Pi Voice only speaks user-facing results. Private reasoning, tool output, failed
 | `/voice stop` | Stop Voice. Leftover spoken text is submitted as a final coding request. |
 | `/voice mute` | Release the microphone without ending the session. |
 | `/voice settings` | Change voice, speaking style, base prompt, VAD, interruption, playback, and display settings. |
-| `Ctrl+X`, then `v` | Open Voice through Leader Key when it is enabled. |
 
 Saving a session-affecting setting while Voice is live asks to restart. That restart drops unfinished speech instead of turning it into an unwanted Pi task.
+
+## Settings
+
+Use `/voice settings` to change options in Pi. You can also create `~/.config/pi-voice/settings.json` for a portable starting point:
+
+```json
+{
+  "voice": "marin",
+  "voiceInstructions": "Warm, concise, and conversational.",
+  "liveInstructions": "",
+  "vadThreshold": 0.7,
+  "vadSilenceDurationMs": 700,
+  "interruptResponse": true,
+  "playbackPaddingMs": 150,
+  "showBackendMessages": false,
+  "showStatusLine": true
+}
+```
+
+`liveInstructions` replaces the live model's base prompt. `voiceInstructions` adds speaking-style guidance. Higher `vadThreshold` values require louder speech. `vadSilenceDurationMs` controls how long a pause ends your turn. `interruptResponse` lets you cut off a response by speaking. `playbackPaddingMs` adds silence around a reply to reduce clipped audio.
+
+Pi Voice reads the API key only from `OPENAI_API_KEY`; never add credentials to the settings file.
 
 ## Limits and costs
 
@@ -74,7 +105,6 @@ Saving a session-affecting setting while Voice is live asks to restart. That res
 - SoX capture and playback are portable but less responsive than WebRTC clients.
 - There is no acoustic echo cancellation. Use headphones to prevent feedback.
 - OpenAI bills Realtime audio and transcription usage. Pi coding turns use your selected Pi provider separately.
-- The API key is read from `OPENAI_API_KEY`. It is never written to settings.
 
 ## Development
 
@@ -83,24 +113,19 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run quality
 ```
 
-`npm run quality` type-checks, builds, runs 88 deterministic tests, and checks the package contents with `npm pack --dry-run`.
+The quality check type-checks, builds, runs deterministic tests, and checks the package contents with `npm pack --dry-run`.
 
 Live microphone and Realtime checks are manual. They require SoX and an OpenAI API key; the automated suite uses fake media and transport implementations.
 
 ## Releases
 
-This repository uses Conventional Commits and Release Please.
+GitHub Releases and version tags are the distribution boundary. Install a pinned release with:
 
-1. Merge conventional commits to `main`.
-2. Release Please opens or updates a release PR with the version and changelog.
-3. Merge that PR to create the GitHub Release and version tag.
-4. Install a pinned release with `pi install git:github.com/iurysza/pi-voice@vX.Y.Z`.
+```sh
+pi install git:github.com/iurysza/pi-voice@vX.Y.Z
+```
 
-Set the repository secret `RELEASE_PLEASE_TOKEN` to a fine-grained personal access token that can write repository contents and pull requests. Use it instead of the automatic `GITHUB_TOKEN` when a release must trigger another workflow.
-
-Pi Voice is an extension, not a standalone binary. Git tags are the distribution boundary, so releases do not publish platform archives or checksums.
-
-Dependabot checks npm dependencies weekly. Patch and minor updates are grouped; major updates remain separate. Enable Dependabot alerts and security-update pull requests in the repository security settings.
+Pi Voice is an extension, not a standalone binary. Releases do not publish platform archives or checksums.
 
 ## Licence
 

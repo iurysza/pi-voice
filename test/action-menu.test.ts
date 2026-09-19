@@ -49,6 +49,9 @@ test('Ctrl+J/K and arrows move then Enter selects', () => {
   ], theme, value => { selected = value; });
 
   arrows.handleInput('\x1b[B');
+  arrows.handleInput('\r');
+  assert.equal(selected, 'settings');
+  selected = 'pending';
   arrows.handleInput('\x1b[A');
   arrows.handleInput('\r');
   assert.equal(selected, 'start');

@@ -62,7 +62,7 @@ test('pre-open audio frames preserve session.update and configured interruption 
   await transport.start({ instructions: LIVE_INSTRUCTIONS, voice: 'marin', model: 'gpt-realtime' });
 
   for (let index = 0; index < MAX_PENDING_FRAMES + 5; index += 1) {
-    transport.send(audioAppend('qq=='));
+    transport.send(audioAppend(Buffer.from([index]).toString('base64')));
   }
 
   listeners.get('open')?.();
@@ -73,7 +73,16 @@ test('pre-open audio frames preserve session.update and configured interruption 
   assert.equal(Boolean(first.session?.audio?.input && first.session?.audio?.output), true);
   assert.deepEqual(first.session?.audio?.input?.turn_detection, { type: 'server_vad', threshold: 0.9, prefix_padding_ms: 300, silence_duration_ms: 1200, interrupt_response: false });
   assert.ok(sent.some(value => value.includes('delegate_to_pi')));
-  assert.equal(sent.filter(value => value.includes('input_audio_buffer.append')).length, MAX_PENDING_FRAMES);
+
+  const pendingAudio: Array<number | undefined> = [];
+
+  for (const raw of sent) {
+    const message = JSON.parse(raw) as { type?: string; audio?: string };
+
+    if (message.type === 'input_audio_buffer.append') pendingAudio.push(Buffer.from(message.audio ?? '', 'base64')[0]);
+  }
+
+  assert.deepEqual(pendingAudio, Array.from({ length: MAX_PENDING_FRAMES }, (_, index) => index + 5));
   await transport.close();
 });
 

@@ -63,6 +63,7 @@ function fakePi() {
   const bus = fakeBus();
   const renderers = new Map<string, MessageRenderer>();
   const messages: Array<{ content: string; display: boolean; customType: string }> = [];
+  const messageOptions: Array<{ triggerTurn?: boolean; deliverAs?: 'steer' | 'followUp' | 'nextTurn' } | undefined> = [];
   const ui = new FakeUi();
   let idle = true;
 
@@ -74,9 +75,11 @@ function fakePi() {
     registerCommand(name: string, spec: { handler: (args: string, ctx: unknown) => Promise<unknown> }) { commands.set(name, spec); },
     on(name: string, handler: (...args: unknown[]) => unknown) { events.on(name, handler); },
     sendUserMessage() { throw new Error('voice handoffs must not use sendUserMessage'); },
-    sendMessage(message: { customType: string; content: string; display: boolean }) {
+    sendMessage(message: { customType: string; content: string; display: boolean }, options?: { triggerTurn?: boolean; deliverAs?: 'steer' | 'followUp' | 'nextTurn' }) {
       messages.push(message);
-      idle = false;
+      messageOptions.push(options);
+
+      if (options?.triggerTurn) idle = false;
     },
     getAllTools() { return []; },
     getCommands() { return [...commands.keys()].map(name => ({ name })); },
@@ -90,7 +93,7 @@ function fakePi() {
     sessionManager: { getSessionId: () => 's', getSessionFile: () => '/tmp/session.jsonl' },
   };
 
-  return { api: api as unknown as ExtensionAPI, commands, events, bus, messages, ctx, ui, renderers };
+  return { api: api as unknown as ExtensionAPI, commands, events, bus, messages, messageOptions, ctx, ui, renderers };
 }
 
 test('voice command starts a fake session and delegates through a visible custom message', async () => {
@@ -108,6 +111,7 @@ test('voice command starts a fake session and delegates through a visible custom
   transport.emit({ type: 'handoff', callId: 'c1', input: 'run the tests' });
   assert.equal(pi.messages.length, 1);
   assert.equal(pi.messages[0]?.display, true);
+  assert.equal(pi.messageOptions[0]?.triggerTurn, true);
   assert.ok(pi.renderers.has('pi-voice.delegation'));
   assert.equal(pi.messages[0]?.customType, 'pi-voice.delegation');
   assert.match(pi.messages[0]?.content ?? '', /<realtime_delegation>/);
@@ -290,6 +294,7 @@ test('stop still submits leftover user transcript as a coding turn', async () =>
   await pi.commands.get('voice')?.handler('stop', pi.ctx);
   assert.equal(pi.messages.length, 1);
   assert.match(pi.messages[0]?.content ?? '', /transcript_tail_flush/);
+  assert.equal(pi.messageOptions[0]?.triggerTurn, true);
   assert.equal(pi.ctx.isIdle(), false);
 });
 

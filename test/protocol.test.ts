@@ -62,22 +62,22 @@ test('session update uses the GA Realtime schema', () => {
   assert.equal('voice' in raw, false);
 });
 
-test('one public function-call family and Codex dialects become handoff; duplicates are ignored at parse time', () => {
+test('public function-call families preserve handoff IDs and requests; duplicates are ignored at parse time', () => {
   const item = { type: 'function_call', name: DELEGATE_TOOL_NAME, call_id: 'c1', arguments: '{"input":"list files"}' };
-  assert.equal(event({ type: 'response.output_item.done', item }).type, 'handoff');
-  assert.equal(event({
+  assert.deepEqual(event({ type: 'response.output_item.done', item }), { type: 'handoff', callId: 'c1', input: 'list files' });
+  assert.deepEqual(event({
     type: 'delegation.created',
     item: { type: 'delegation', target: 'client', id: 'd1', content: [{ type: 'input_text', text: 'run tests' }] },
-  }).type, 'handoff');
-  assert.equal(event({ type: 'conversation.handoff.requested', handoff_id: 'h1', input_transcript: 'open the file' }).type, 'handoff');
+  }), { type: 'handoff', callId: 'd1', input: 'run tests' });
+  assert.deepEqual(event({ type: 'conversation.handoff.requested', handoff_id: 'h1', input_transcript: 'open the file' }), { type: 'handoff', callId: 'h1', input: 'open the file' });
   assert.equal(Option.isNone(parseInbound(JSON.stringify({ type: 'response.function_call_arguments.done', name: DELEGATE_TOOL_NAME, call_id: 'c1', arguments: '{"input":"list files"}' }))), true);
   assert.equal(Option.isNone(parseInbound(JSON.stringify({ type: 'conversation.item.added', item }))), true);
   assert.equal(Option.isNone(parseInbound(JSON.stringify({ type: 'conversation.item.done', item }))), true);
 });
 
-test('session, audio, and errors still map; unrelated events stay none', () => {
-  assert.equal(event({ type: 'session.created', session: { id: 's1' } }).type, 'session_ready');
-  assert.equal(event({ type: 'response.output_audio.delta', delta: 'qq==', sample_rate: 24000 }).type, 'audio_out');
+test('session, audio, and errors preserve realtime data; unrelated events stay none', () => {
+  assert.deepEqual(event({ type: 'session.created', session: { id: 's1' } }), { type: 'session_ready', sessionId: 's1' });
+  assert.deepEqual(event({ type: 'response.output_audio.delta', delta: 'qq==', sample_rate: 24000 }), { type: 'audio_out', audio: 'qq==', sampleRate: 24000 });
   assert.equal(event({ type: 'error', error: { message: 'quota' } }).type, 'error');
   assert.equal((event({ type: 'error', error: { message: 'quota' } }) as { fatal: boolean }).fatal, true);
   assert.equal((event({ type: 'error', error: { code: 'conversation_already_has_an_active_response' } }) as { fatal: boolean }).fatal, false);

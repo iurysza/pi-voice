@@ -4,10 +4,12 @@ import { Option } from 'effect';
 import { MAX_FIELD_BYTES, isVoiceDelegationTurn, parseDelegation, speakableFinalText, wrapDelegation } from '../src/delegation.ts';
 
 test('delegation XML round-trips escaped fields and optional transcript delta', () => {
-  const wrapped = wrapDelegation({ input: 'open <src/app.ts> & run', transcriptDelta: 'open files' });
+  const wrapped = wrapDelegation({ input: 'open <src/app.ts> & run', transcriptDelta: 'open > files & notes' });
+  assert.match(wrapped, /<input>open &lt;src\/app\.ts&gt; &amp; run<\/input>/);
+  assert.match(wrapped, /<transcript_delta>open &gt; files &amp; notes<\/transcript_delta>/);
   const parsed = Option.getOrThrow(parseDelegation(wrapped));
   assert.equal(parsed.input, 'open <src/app.ts> & run');
-  assert.equal(parsed.transcriptDelta, 'open files');
+  assert.equal(parsed.transcriptDelta, 'open > files & notes');
   assert.equal(parsed.source, 'handoff');
   assert.equal(Option.isNone(parseDelegation('not xml')), true);
 });

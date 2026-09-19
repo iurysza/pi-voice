@@ -179,7 +179,7 @@ test('beginStart while a coding turn is running does not mark the in-flight answ
   assert.equal(state.latestInputWasVoice, false);
 });
 
-test('two overlapping handoffs complete in order without dropping a call id', async () => {
+test('two overlapping handoffs complete in request order', async () => {
   const { media, transport, ui, loop } = await activeLoop();
   transport.emit({ type: 'handoff', callId: 'call-A', input: 'first' });
   transport.emit({ type: 'handoff', callId: 'call-B', input: 'second' });
@@ -187,10 +187,12 @@ test('two overlapping handoffs complete in order without dropping a call id', as
   loop.settled('answer A');
   loop.settled('answer B');
   const sent = transport.sent.map(value => JSON.stringify(value));
-  assert.equal(sent.filter(value => value.includes('"call_id":"call-A"')).length, 1);
-  assert.equal(sent.filter(value => value.includes('"call_id":"call-B"')).length, 1);
-  assert.ok(sent.some(value => value.includes('[BACKEND] answer A')));
-  assert.ok(sent.some(value => value.includes('[BACKEND] answer B')));
+  const answerA = sent.findIndex(value => value.includes('[BACKEND] answer A'));
+  const ackA = sent.findIndex(value => value.includes('"call_id":"call-A"'));
+  const answerB = sent.findIndex(value => value.includes('[BACKEND] answer B'));
+  const ackB = sent.findIndex(value => value.includes('"call_id":"call-B"'));
+  assert.ok(answerA >= 0 && ackA >= 0 && answerB >= 0 && ackB >= 0);
+  assert.ok(answerA < ackA && ackA < answerB && answerB < ackB);
   loop.detach();
   await transport.close();
   await media.close();
@@ -277,9 +279,27 @@ test('disabled spoken interruption leaves queued playback intact', async () => {
 });
 
 test('audio completion finishes playback without clearing speech', async () => {
-  const { media, transport, loop } = await activeLoop();
+  const media = createFakeMedia();
+  const transport = createFakeTransport();
+  const ui = host();
+  let finishCalls = 0;
+
+  const trackedMedia = {
+    ...media,
+    finishPlayback() {
+      finishCalls += 1;
+      media.finishPlayback();
+    },
+  };
+
+  const loop = new VoiceLoop(trackedMedia, transport, ui, initialState());
+  loop.attach();
+  loop.begin();
+  loop.markBackend();
+  await transport.start({ instructions: 'speak', voice: 'marin', model: 'gpt-realtime' });
   transport.emit({ type: 'audio_out', audio: Buffer.from('last word').toString('base64'), sampleRate: 24000 });
   transport.emit({ type: 'audio_done' });
+  assert.equal(finishCalls, 1);
   assert.equal(Buffer.concat(media.playback).toString(), 'last word');
   loop.detach();
   await media.close();

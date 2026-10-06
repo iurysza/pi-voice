@@ -1,0 +1,123 @@
+# Squash-merge Dependabot pull requests once the existing CI workflow
+# (ci.yml) succeeds. Semver-major updates stay open for a human.
+#
+# `gh pr merge --auto` is not used. Required status checks are not visible
+# on this repository, so auto-merge could land before CI finishes when none
+# are required. This job waits for that CI run, then squash-merges.
+
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Squash-merge after CI succeeds
+        if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-major' && steps.metadata.outputs.update-type != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          set -euo pipefail
+
+          echo "Dependabot update type: ${UPDATE_TYPE}"
+
+          ready=false
+          attempts=45
+          for attempt in $(seq 1 "$attempts"); do
+            run_json=$(gh run list \
+              --repo "$REPO" \
+              --commit "$SHA" \
+              --workflow ci.yml \
+              --event pull_request \
+              --limit 1 \
+              --json databaseId,status,conclusion,url,headSha)
+
+            if [ "$(echo "$run_json" | jq 'length')" = "0" ]; then
+              echo "CI has not started for ${SHA} (attempt ${attempt}/${attempts})"
+              sleep 20
+              continue
+            fi
+
+            status=$(echo "$run_json" | jq -r '.[0].status')
+            conclusion=$(echo "$run_json" | jq -r '.[0].conclusion // empty')
+            url=$(echo "$run_json" | jq -r '.[0].url')
+            echo "CI ${url} status=${status} conclusion=${conclusion:-pending} (attempt ${attempt}/${attempts})"
+
+            if [ "$status" != "completed" ]; then
+              sleep 20
+              continue
+            fi
+
+            case "$conclusion" in
+              success)
+                ready=true
+                break
+                ;;
+              failure|timed_out|action_required|neutral|startup_failure|stale)
+                echo "CI concluded ${conclusion}; leaving the pull request open."
+                exit 1
+                ;;
+              *)
+                echo "Latest CI run is ${conclusion}; waiting for a successful run."
+                sleep 20
+                ;;
+            esac
+          done
+
+          if [ "$ready" != "true" ]; then
+            echo "Timed out waiting for CI on ${SHA}."
+            exit 1
+          fi
+
+          echo "CI succeeded for ${SHA}. Squash-merging."
+
+          for try in 1 2 3 4 5 6; do
+            if gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --match-head-commit "$SHA"; then
+              echo "Squash-merged pull request #${PR_NUMBER}."
+              exit 0
+            fi
+
+            info=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefOid --jq '[.state, .headRefOid] | @tsv')
+            state=${info%%$'\t'*}
+            head_sha=${info#*$'\t'}
+
+            if [ "$state" = "MERGED" ]; then
+              echo "Pull request #${PR_NUMBER} is already merged."
+              exit 0
+            fi
+            if [ "$head_sha" != "$SHA" ]; then
+              echo "Head moved from ${SHA} to ${head_sha}; a newer run will merge it."
+              exit 0
+            fi
+
+            echo "Merge was not accepted yet (attempt ${try}/6)."
+            sleep 10
+          done
+
+          echo "Unable to squash-merge pull request #${PR_NUMBER}."
+          exit 1

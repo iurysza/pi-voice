@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/iurysza/pi-voice/actions/workflows/ci.yml"><img src="https://github.com/iurysza/pi-voice/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-3b82f6" alt="MIT licence"></a>
-  <a href="https://github.com/badlogic/pi-mono"><img src="https://img.shields.io/badge/Pi-0.85.1-7c3aed" alt="Pi 0.85.1"></a>
+  <a href="https://github.com/badlogic/pi-mono"><img src="https://img.shields.io/badge/Pi-1.5.0-7c3aed" alt="Pi 1.5.0"></a>
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Linux-2563eb" alt="macOS and Linux">
 </p>
 
@@ -27,7 +27,7 @@ The idea follows [this short post](https://x.com/IurySza/status/2101016432406577
 
 ## Install
 
-You need Pi `0.85.1`, Node `22.19.0` or later, [SoX](https://sox.sourceforge.net/) with `rec` and `play` on `PATH`, and an OpenAI API key with Realtime access.
+You need Pi `1.5.0`, Node `22.19.0` or later, [SoX](https://sox.sourceforge.net/) with `rec` and `play` on `PATH`, and an OpenAI API key with Realtime access.
 
 Install a tagged release as a Pi Git package:
 

@@ -17,3 +17,5 @@ If you need to change a spoken request or returned answer, start with [delegatio
 If you need to change capture, playback, or latency handling, start with the [SoX decision](./docs/adr/ADR-0002-use-sox-for-terminal-audio.md), then use the [media boundary](./architecture.md#component-boundaries) and [microphone audio flow](./type-breakdown.md#microphone-audio) to find the owning port.
 
 If you need to change session startup, retries, or shutdown, read the [session state model](./architecture.md#session-state) alongside the [startup execution tree](./type-breakdown.md#start-a-session).
+
+For the Undici security-update block and alignment between Pi dependency pins and the startup guard, read the [Pi 1.5 dependency update](./pi-1.5-dependency-update.md).

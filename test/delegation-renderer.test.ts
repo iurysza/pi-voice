@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { visibleWidth } from '@earendil-works/pi-tui';
+import type { MessageRenderOptions } from '@earendil-works/pi-coding-agent';
 import { renderBackend, renderDelegation } from '../src/delegation-renderer.ts';
 import { DELEGATION_CUSTOM_TYPE, wrapDelegation } from '../src/delegation.ts';
 
@@ -11,17 +12,22 @@ const theme = {
   bold: (text: string) => text,
 };
 
+const keybindingHints: Pick<MessageRenderOptions, 'keyText' | 'keyHint'> = {
+  keyText: () => '',
+  keyHint: (_keybinding, description) => description,
+};
+
 test('expanded delegation shows the complete sent wrapper, not a paraphrase', () => {
   const content = wrapDelegation({ input: 'Explain <audio> & buffering', transcriptDelta: 'um, explain this', source: 'transcript_tail_flush' });
   const message = { role: 'custom' as const, customType: DELEGATION_CUSTOM_TYPE, content, display: true, timestamp: 0 };
-  const expanded = renderDelegation(message, { expanded: true, outputPad: 0 }, theme).render(200).map(line => line.trimEnd()).join('\n');
+  const expanded = renderDelegation(message, { ...keybindingHints, expanded: true, outputPad: 0 }, theme).render(200).map(line => line.trimEnd()).join('\n');
   assert.equal(expanded, `🎙  voice Explain <audio> & buffering\n${content}`);
-  const collapsed = renderDelegation(message, { expanded: false, outputPad: 0 }, theme).render(200).join('\n');
+  const collapsed = renderDelegation(message, { ...keybindingHints, expanded: false, outputPad: 0 }, theme).render(200).join('\n');
   assert.match(collapsed, /🎙  voice Explain <audio> & buffering/);
   assert.doesNotMatch(collapsed, /<realtime_delegation>/);
 
   for (const width of [20, 40]) {
-    assert.ok(renderDelegation(message, { expanded: true, outputPad: 0 }, theme).render(width).every(line => visibleWidth(line) <= width));
+    assert.ok(renderDelegation(message, { ...keybindingHints, expanded: true, outputPad: 0 }, theme).render(width).every(line => visibleWidth(line) <= width));
   }
 });
 
@@ -31,13 +37,13 @@ test('collapsed requests fit one line with padding; expansion retains the full m
   const message = { role: 'custom' as const, customType: DELEGATION_CUSTOM_TYPE, content, display: true, timestamp: 0 };
 
   for (const width of [20, 40, 80]) {
-    const rows = renderDelegation(message, { expanded: false, outputPad: 1 }, theme).render(width);
+    const rows = renderDelegation(message, { ...keybindingHints, expanded: false, outputPad: 1 }, theme).render(width);
     assert.equal(rows.length, 1);
     assert.ok(rows[0]?.startsWith('🎙  voice '));
     assert.ok(rows.every(row => visibleWidth(row) <= width));
   }
 
-  const expanded = renderDelegation(message, { expanded: true, outputPad: 0 }, theme).render(200).map(row => row.trimEnd()).slice(1).join('\n');
+  const expanded = renderDelegation(message, { ...keybindingHints, expanded: true, outputPad: 0 }, theme).render(200).map(row => row.trimEnd()).slice(1).join('\n');
   assert.equal(expanded, content);
 });
 
@@ -52,7 +58,7 @@ test('collapsed and expanded rows use the completed-tool background', () => {
 
  return text; } };
 
-    renderDelegation(message, { expanded, outputPad: 1 }, styled).render(80);
+    renderDelegation(message, { ...keybindingHints, expanded, outputPad: 1 }, styled).render(80);
     assert.ok(backgrounds.length > 0);
     assert.ok(backgrounds.every(color => color === 'toolSuccessBg'));
   }

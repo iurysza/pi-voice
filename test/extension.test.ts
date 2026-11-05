@@ -96,6 +96,62 @@ function fakePi() {
   return { api: api as unknown as ExtensionAPI, commands, events, bus, messages, messageOptions, ctx, ui, renderers };
 }
 
+for (const version of ['1.5.0', '1.4.0']) {
+  test(`non-fake startup ${version === '1.5.0' ? 'accepts' : 'rejects'} injected Pi ${version}`, async t => {
+    const previousTransport = process.env.PI_VOICE_TRANSPORT;
+    delete process.env.PI_VOICE_TRANSPORT;
+    t.after(() => {
+      if (previousTransport === undefined) delete process.env.PI_VOICE_TRANSPORT;
+      else process.env.PI_VOICE_TRANSPORT = previousTransport;
+    });
+    const pi = fakePi();
+    const media = createFakeMedia();
+    const socket = new EventEmitter();
+    const sent: string[] = [];
+    let opened = false;
+    let closed = false;
+    voiceExtension(pi.api, {
+      media,
+      piVersion: version,
+      apiKey: Redacted.make('test-key'),
+      settings: DEFAULT_SETTINGS,
+      createSocket: () => {
+        opened = true;
+
+        return {
+          on: (event, listener) => { socket.on(event, listener); },
+          send: data => { sent.push(data); },
+          close: () => { closed = true; },
+        };
+      },
+    });
+    t.after(async () => {
+      await pi.commands.get('voice')?.handler('stop', pi.ctx);
+      await media.close();
+    });
+    await pi.commands.get('voice')?.handler('start', pi.ctx);
+
+    if (version === '1.5.0') {
+      assert.equal(opened, true);
+      assert.equal(closed, false);
+      assert.equal(renderedWidget(pi.ui), `dim:${STATUS_GLYPH.connecting}  connecting`);
+      socket.emit('open');
+      assert.ok(sent.some(message => message.includes('session.update')));
+      socket.emit('message', JSON.stringify({ type: 'session.created', session: { id: 'test-session' } }));
+      assert.equal(renderedWidget(pi.ui), `accent:${STATUS_GLYPH.listening}  listening`);
+      assert.deepEqual(pi.ui.notices, []);
+      await pi.commands.get('voice')?.handler('stop', pi.ctx);
+      assert.equal(closed, true);
+    } else {
+      assert.equal(opened, false);
+      assert.deepEqual(sent, []);
+      assert.equal(renderedWidget(pi.ui), undefined);
+      assert.ok(pi.ui.notices.some(notice => notice.level === 'error'
+        && notice.message.includes('Pi Voice requires Pi 1.5.0; found 1.4.0')));
+    }
+  });
+}
+
 test('voice command starts a fake session and delegates through a visible custom message', async () => {
   const pi = fakePi();
   const media = createFakeMedia();

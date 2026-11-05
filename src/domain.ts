@@ -1,6 +1,6 @@
 import { Effect, Option, Predicate, Schema } from 'effect';
 
-export const PI_VERSION = '0.85.1';
+export const PI_VERSION = '1.5.0';
 
 export class VoiceError extends Schema.TaggedError<VoiceError>()('VoiceError', { code: Schema.String, message: Schema.String }) {}
 

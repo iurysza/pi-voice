@@ -33,24 +33,24 @@
     ]
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": "1.5.0",
-    "@earendil-works/pi-coding-agent": "1.5.0",
-    "@earendil-works/pi-tui": "1.5.0",
-    "typebox": "1.4.3"
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-coding-agent": "1.5.2",
+    "@earendil-works/pi-tui": "1.5.2",
+    "typebox": "1.4.6"
   },
   "dependencies": {
-    "effect": "4.1.2",
-    "ws": "8.22.1"
+    "effect": "4.1.4",
+    "ws": "8.22.2"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "1.5.0",
-    "@earendil-works/pi-coding-agent": "1.5.0",
-    "@earendil-works/pi-tui": "1.5.0",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-coding-agent": "1.5.2",
+    "@earendil-works/pi-tui": "1.5.2",
     "@effect/language-service": "0.87.5",
-    "@oxlint/plugins": "1.91.0",
+    "@oxlint/plugins": "1.93.0",
     "@types/node": "26.6.6",
-    "oxlint": "1.91.0",
-    "typebox": "1.4.3",
+    "oxlint": "1.93.0",
+    "typebox": "1.4.6",
     "typescript": "7.0.2"
   },
   "scripts": {
